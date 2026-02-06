@@ -233,21 +233,23 @@ class Agent:
 # 3. Training Loop
 # ==========================================
 
-def train(epochs=10000):
+def train(epochs=10000, epsilon=0.1):
     env = TicTacToeEnv()
-    p1 = Agent(symbol=1, alpha=0.1, epsilon=0.1) # X
-    p2 = Agent(symbol=-1, alpha=0.1, epsilon=0.1) # O (also learning)
+    p1 = Agent(symbol=1, alpha=0.1, epsilon=epsilon) # X
+    p2 = Agent(symbol=-1, alpha=0.1, epsilon=epsilon) # O (also learning)
     
-    print("4. Training Loop (Episodes > 10,000)")
+    print(f"4. Training Loop (Episodes > {epochs}, Epsilon = {epsilon})")
     
     # Tracking metrics
     p1_wins = 0
     p2_wins = 0
     draws = 0
+    p1_total_reward = 0
+    p2_total_reward = 0
     history = []
     
-    print(f"{'Episode':<10} | {'P1 Win %':<10} | {'P2 Win %':<10} | {'Draw %':<10}")
-    print("-" * 46)
+    print(f"{'Episode':<10} | {'P1 Avg Reward':<15} | {'P2 Avg Reward':<15}")
+    print("-" * 45)
 
     for i in range(1, epochs + 1):
         env.reset()
@@ -276,6 +278,9 @@ def train(epochs=10000):
         p1.update_values(reward_p1)
         p2.update_values(reward_p2)
         
+        p1_total_reward += reward_p1
+        p2_total_reward += reward_p2
+        
         if env.winner_symbol == 1:
             p1_wins += 1
         elif env.winner_symbol == -1:
@@ -284,43 +289,19 @@ def train(epochs=10000):
             draws += 1
             
         if i % 1000 == 0:
-            p1_rate = p1_wins / 1000
-            p2_rate = p2_wins / 1000
-            draw_rate = draws / 1000
-            print(f"{i:<10} | {p1_rate:.3f}      | {p2_rate:.3f}      | {draw_rate:.3f}")
-            history.append((i, p1_rate, p2_rate, draw_rate))
+            p1_avg_reward = p1_total_reward / 1000
+            p2_avg_reward = p2_total_reward / 1000
+            print(f"{i:<10} | {p1_avg_reward:<15.3f} | {p2_avg_reward:<15.3f}")
+            history.append((i, p1_avg_reward, p2_avg_reward))
             p1_wins = 0
             p2_wins = 0
             draws = 0
+            p1_total_reward = 0
+            p2_total_reward = 0
 
     print("Training Complete.")
     
-    # Plotting Learning Curve
-    try:
-        import matplotlib.pyplot as plt
-        
-        episodes = [x[0] for x in history]
-        p1_rates = [x[1] for x in history]
-        p2_rates = [x[2] for x in history]
-        draw_rates = [x[3] for x in history]
-        
-        plt.figure(figsize=(10, 6))
-        plt.plot(episodes, p1_rates, label='Player X (P1) Win %', color='blue')
-        plt.plot(episodes, p2_rates, label='Player O (P2) Win %', color='red')
-        plt.plot(episodes, draw_rates, label='Draw %', color='green')
-        
-        plt.xlabel('Episodes')
-        plt.ylabel('Win Rate (Moving Average)')
-        plt.title('Tic-Tac-Toe RL Agent Learning Curve Epsilon-Greedy vs Greedy')
-        plt.legend()
-        plt.grid(True)
-        plt.savefig('learning_curve_g_e.png')
-        print("Learning curve saved as 'learning_curve.png'")
-        
-    except ImportError:
-        print("Matplotlib not found, skipping plot generation.")
-
-    return p1, p2
+    return p1, p2, history
 
 # ==========================================
 # 4. Main Execution & Demo
@@ -329,18 +310,64 @@ def train(epochs=10000):
 if __name__ == "__main__":
     print("1. Start")
     
-    # Train
-    p1, p2 = train(10000)
+    # Train with different epsilon values
+    epsilon_values = [0.01, 0.1, 0.3, 0.5]
+    results = {}
     
-    # 2. Output: Final Trajectory (Demonstration Game)
-    # Let's verify by playing a game with epsilon=0 (Greedy)
-    print("\n\n=== Final Trajectory (Greedy demonstration) ===")
+    for eps in epsilon_values:
+        print(f"\n{'='*50}")
+        print(f"Training with Epsilon = {eps}")
+        print(f"{'='*50}")
+        p1, p2, history = train(10000, epsilon=eps)
+        results[eps] = history
     
+    # Plotting Average Rewards for all epsilon values
+    try:
+        import matplotlib.pyplot as plt
+        
+        # Create figure with 2 subplots side by side
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+        
+        # Plot 1: Player 1 (X) Average Reward
+        for eps in epsilon_values:
+            episodes = [x[0] for x in results[eps]]
+            p1_rewards = [x[1] for x in results[eps]]
+            ax1.plot(episodes, p1_rewards, label=f'ε = {eps}', marker='o', linewidth=2, markersize=5)
+        ax1.set_xlabel('Episodes', fontsize=12)
+        ax1.set_ylabel('Average Reward', fontsize=12)
+        ax1.set_title('Player 1 (X) - Average Reward vs Episodes', fontsize=13, fontweight='bold')
+        ax1.legend(fontsize=11)
+        ax1.grid(True, alpha=0.3)
+        
+        # Plot 2: Player 0 (O) Average Reward
+        for eps in epsilon_values:
+            episodes = [x[0] for x in results[eps]]
+            p2_rewards = [x[2] for x in results[eps]]
+            ax2.plot(episodes, p2_rewards, label=f'ε = {eps}', marker='s', linewidth=2, markersize=5)
+        ax2.set_xlabel('Episodes', fontsize=12)
+        ax2.set_ylabel('Average Reward', fontsize=12)
+        ax2.set_title('Player 0 (O) - Average Reward vs Episodes', fontsize=13, fontweight='bold')
+        ax2.legend(fontsize=11)
+        ax2.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig('average_rewards_epsilon_comparison.png', dpi=150, bbox_inches='tight')
+        print("\nGraphs saved as 'average_rewards_epsilon_comparison.png'")
+        plt.show()
+        
+    except ImportError:
+        print("Matplotlib not found, skipping plot generation.")
+    
+    print("\n" + "="*50)
+    print("2. Final Trajectory (Greedy demonstration)")
+    print("="*50)
+    
+    # Use the last trained models (epsilon=0.5)
     env = TicTacToeEnv()
-    p1.epsilon = 0
-    p2.epsilon = 0.1
+    p1.epsilon = 0  # Set to 0 for greedy play
+    p2.epsilon = 0
     
-    print("Initial Board:")
+    print("\nInitial Board:")
     env.print_board()
     
     while not env.ended:
@@ -360,4 +387,3 @@ if __name__ == "__main__":
         print("\nWinner: O")
     else:
         print("\nDraw")
-
