@@ -1,7 +1,7 @@
 """
-FINAL OPTIMIZED VERSION
+FAST TEST VERSION
 Naive vs MEA (PAC Best Arm Identification)
-Adjusted to finish within ~15 minutes on i7 (11th Gen)
+Small values for quick execution
 """
 
 import numpy as np
@@ -42,7 +42,7 @@ def naive_algorithm(mu, epsilon, delta):
 
 def median_elimination(mu, epsilon, delta):
     S = np.arange(len(mu))
-    eps_l = epsilon
+    eps_l = epsilon / 4
     delta_l = delta / 2
     total_samples = 0
     phase_history = []
@@ -74,27 +74,24 @@ def median_elimination(mu, epsilon, delta):
 def experiment_success_rate():
     print("Running Success Rate Test...")
 
-    K = 1000
-    epsilon = 0.05
-    delta = 0.05
+    K = 200
+    epsilon = 0.1
+    delta = 0.1
 
     naive_success = 0
     mea_success = 0
 
-    for i in range(50):   # reduced from 100
+    for _ in range(20):   # small runs for testing
         mu = generate_bandit(K)
         optimal_value = np.max(mu)
 
         arm_n, _, _ = naive_algorithm(mu, epsilon, delta)
-        arm_m, _, _ = median_elimination(mu, epsilon, delta)
-
         if mu[arm_n] >= optimal_value - epsilon:
             naive_success += 1
 
+        arm_m, _, _ = median_elimination(mu, epsilon, delta)
         if mu[arm_m] >= optimal_value - epsilon:
             mea_success += 1
-
-        print("Run", i+1, "done")
 
     print("Naive ε-optimal count:", naive_success)
     print("MEA ε-optimal count:", mea_success)
@@ -108,10 +105,10 @@ def experiment_success_rate():
 def experiment_sample_complexity():
     print("Running Sample Complexity Test...")
 
-    epsilon = 0.05
-    delta = 0.05
+    epsilon = 0.1
+    delta = 0.1
 
-    Ks = [500, 2000, 5000, 10000, 20000]
+    Ks = [100, 300, 500, 700, 1000]
 
     naive_samples = []
     mea_samples = []
@@ -128,11 +125,12 @@ def experiment_sample_complexity():
         print("K =", K, "done")
 
     plt.figure()
+    #idhar
     plt.plot(Ks, naive_samples, label="Naive")
     plt.plot(Ks, mea_samples, label="MEA")
     plt.xlabel("Number of Arms (K)")
     plt.ylabel("Sample Complexity")
-    plt.title("Sample Complexity vs K")
+    plt.title("Sample Complexity (Test Version)")
     plt.legend()
     plt.show()
 
@@ -144,12 +142,12 @@ def experiment_sample_complexity():
 def experiment_empirical_error():
     print("Running Empirical Error Test...")
 
-    K = 100000   # reduced from 500000
+    K = 2000
     mu = generate_bandit(K)
     optimal_value = np.max(mu)
 
-    epsilons = [0.2, 0.1, 0.05, 0.02]
-    delta_fixed = 0.05
+    epsilons = [0.2, 0.1, 0.05]
+    delta_fixed = 0.1
 
     naive_errors = []
     mea_errors = []
@@ -161,14 +159,12 @@ def experiment_empirical_error():
         naive_errors.append(abs(mu[arm_n] - optimal_value))
         mea_errors.append(abs(mu[arm_m] - optimal_value))
 
-        print("Epsilon", epsilon, "done")
-
     plt.figure()
     plt.plot(epsilons, naive_errors, label="Naive")
     plt.plot(epsilons, mea_errors, label="MEA")
     plt.xlabel("Epsilon")
-    plt.ylabel("|μ_selected - μ_best|")
-    plt.title("Error vs Epsilon (K = 100000)")
+    plt.ylabel("|μ̂ - μ*|")
+    plt.title("Error vs Epsilon (Test Version)")
     plt.legend()
     plt.show()
 
@@ -180,9 +176,9 @@ def experiment_empirical_error():
 def experiment_phase_history():
     print("Running MEA Phase History Test...")
 
-    K = 1000
-    epsilon = 0.05
-    delta = 0.05
+    K = 200
+    epsilon = 0.1
+    delta = 0.1
 
     mu = generate_bandit(K)
     _, _, phase_history = median_elimination(mu, epsilon, delta)
@@ -191,7 +187,7 @@ def experiment_phase_history():
     plt.plot(range(len(phase_history)), phase_history)
     plt.xlabel("Phase")
     plt.ylabel("Remaining Arms")
-    plt.title("MEA Phase History")
+    plt.title("MEA Phase History (Test Version)")
     plt.show()
 
 
